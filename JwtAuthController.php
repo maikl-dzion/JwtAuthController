@@ -3,8 +3,8 @@
 namespace Core\Service;
 
 interface  JwtAuthInterface {
-    public function  encode($data = array(), $privateKey = false, $alg  = 'sha256'); // create token
-    public function  decode($token, $secretKey = false, $alg  = 'sha256'); // verify token
+    public function  encode(array $data = [], string $privateKey = '', string $alg  = 'sha256') : string; // create token
+    public function  decode(string $token, string $secretKey = '', string $alg  = 'sha256') : bool; // verify token
 }
 
 
@@ -16,7 +16,7 @@ class JwtAuthController implements JwtAuthInterface {
          $this->alg = $alg;
     }
 
-    public function  encode($data = array(), $privateKey = false, $alg  = 'sha256') {
+    public function  encode(array $data = [], string $privateKey = '', string $alg  = 'sha256') :string {
 
          $secretKey  = $this->getSecretKey();
          $header     = $this->createHeader();
@@ -25,7 +25,7 @@ class JwtAuthController implements JwtAuthInterface {
          return $this->createToken($header, $payload, $secretKey, $alg);
     }
 
-    public function decode($token, $secretKey = false, $alg  = 'sha256'){
+    public function decode(string $token, string $secretKey = '', string $alg  = 'sha256') : bool {
 
         if(!$token)
             return false;
@@ -44,11 +44,11 @@ class JwtAuthController implements JwtAuthInterface {
 
         $compareSign = $this->sign($header, $payload, $secretKey);
 
-        return ($userSign === $compareSign) ? true : false;
+        return $userSign === $compareSign;
     }
 
 
-    private function createPayload($data = array()) {
+    private function createPayload(array $data = array()) : array {
 
         $tokenId   = base64_encode(32);
         $issuedAt  = time();
@@ -56,38 +56,38 @@ class JwtAuthController implements JwtAuthInterface {
         $expire    = $notBefore + 60; // добавляем 60 секунд
         $serverName = $_SERVER['HTTP_HOST'];
 
-        return array(
+        return [
             'jti'  => $tokenId,    // Json Token Id: уникальный идентификатор токена
             'iss'  => $serverName, // эммитент
             'iat'  => $issuedAt,   // время, когда был создан токен
             'nbf'  => $notBefore,  // не раньше
             'exp'  => $expire,     // время жизни
             'data' => array($data),  // данные, относящиеся к конкретному пользователю
-        );
+        ];
     }
 
-    private function sign($header, $payload, $secretKey, $alg  = 'sha256') {
+    private function sign(string $header, string $payload, string $secretKey, string $alg  = 'sha256') : string{
         $data = $header . '.' . $payload;
         $hash = hash_hmac($alg, $data, $secretKey);
-        return $this->base64Convert($hash);
+        return rtrim(base64_encode($hash), '=');
     }
 
-    private function createToken($header, $payload, $secretKey, $alg) {
+    private function createToken(array $header, array $payload, string $secretKey, string $alg) : string {
         $header64  = $this->base64Convert($header);
         $payload64  = $this->base64Convert($payload);
         $signature = $this->sign($header64, $payload64, $secretKey, $alg);
         return $header64 . '.'. $payload64 .'.'. $signature;
     }
 
-    private function createHeader() {
-        return array('alg' => 'HS256', 'typ' =>  'JWT');
+    private function createHeader() : array {
+        return ['alg' => 'HS256', 'typ' =>  'JWT'];
     }
 
-    private function base64Convert($data) {
+    private function base64Convert(array $data) : string {
         return rtrim(base64_encode(json_encode($data)), '=');
     }
 
-    private function  getSecretKey() {
+    private function  getSecretKey() : string {
         $secretKey = 'ghjfyHFDvfgdfhs67356vdfgdfdxHgGhKL7899';
         return  $secretKey;
     }
